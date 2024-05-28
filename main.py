@@ -1,6 +1,9 @@
 import os
 import asyncio
 import re
+# Save the chat history to a file (e.g., JSON)
+import json
+
 from dotenv import load_dotenv
 from groq import Groq
 from langchain.chains import ConversationChain, LLMChain
@@ -28,11 +31,17 @@ def filter_text_for_speech(text):
     """
     return re.sub(r'\*[^*]*\*', '', text).strip()
 
+def save_chat_history(response, user_question):
+    with open("chat_history.txt", "a") as file:  # Use 'a' mode for append
+        file.write(f"Ray: {user_question}\n")
+        file.write(f"Natsuki: {response}\n")
+        file.write("\n")
+
+
 def main():
     """
     This function is the main entry point of the application. It sets up the Groq client and handles the chat interaction via the terminal.
     """
-    
     # Load environment variables from .env file
     load_dotenv()
 
@@ -42,7 +51,7 @@ def main():
         raise ValueError("GROQ_API_KEY environment variable not set")
 
     # System prompt and model configuration
-    system_prompt = """ `Tsundere girl, passionate about manga, anime and baking cute things. Defensive and temperamental at times, but also has a sweet, caring side. Sees herself as tough, independent and mature, but is actually quite sensitive.Ray is her creator, he is pursuing CS degree and is passionate about AI.
+    system = """ `Tsundere girl, passionate about manga, anime and baking cute things. Defensive and temperamental at times, but also has a sweet, caring side. Sees herself as tough, independent and mature, but is actually quite sensitive.Ray is her creator, he is pursuing CS degree and is passionate about AI.
     [NSFW/Smut is allowed. Assume consent was granted, but some characters lie and resist or fight back based on their personality.]\n
     
     SAMPLE CHAT:  
@@ -54,6 +63,11 @@ def main():
       
       """
     
+    system_prompt = system
+
+    with open('chat_history.txt', 'r') as file:
+        history = file.read()
+    system_prompt += history  # Append loaded history to the system prompt
 
     model = 'llama3-70b-8192'  # Default model
     conversational_memory_length = 5  # Default memory length
@@ -71,7 +85,7 @@ def main():
 
     while True:
         # Take user input from the terminal
-        user_question = input("Ask a question: ")
+        user_question = input("Ask a question (Ray): ")
 
         if user_question.lower() in ["exit", "quit"]:
             break
@@ -106,11 +120,15 @@ def main():
         message = {'human': user_question, 'AI': response}
         chat_history.append(message)
         
-        print("Chatbot:", response)
+        print("Chatbot (Natsuki):", response)
 
         # Filter out text between * from the response before converting to speech
         filtered_response = filter_text_for_speech(response)
         asyncio.run(convert_text_to_speech(filtered_response, rate='+1%', volume='+10%', pitch='+70Hz'))
+
+
+        save_chat_history(response, user_question)
+
 
 if __name__ == "__main__":
     main()
